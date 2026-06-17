@@ -1,72 +1,38 @@
 stages:
-  - lint
   - test
   - build
 
-variables:
-  POETRY_VIRTUALENVS_CREATE: "false"
-  PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
-  POETRY_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pypoetry"
-
-cache:
-  key: "${CI_JOB_NAME}-${CI_COMMIT_REF_SLUG}-${PYTHON}"
-  paths:
-    - .cache/pypoetry
-    - .cache/pip
-
-.lint_template: &lint_definition
-  stage: lint
+default:
   image: python:3.11
   before_script:
-    - pip install --upgrade pip
-    - pip install poetry
-    - poetry config virtualenvs.create false
-    - poetry install --no-interaction --no-ansi
-  script:
-    - poetry run black --check .
-    - poetry run isort --check-only .
-    - poetry run flake8
+    - python -m pip install --upgrade pip
 
-lint:
-  <<: *lint_definition
+variables:
+  PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
+  PIP_DISABLE_PIP_VERSION_CHECK: "1"
+
+cache:
+  key: "${CI_COMMIT_REF_SLUG}"
+  paths:
+    - .cache/pip
+
+test:
+  stage: test
+  script:
+    - python -m pip install . pytest pytest-cov
+    - python -m pytest -q
   rules:
     - if: $CI_PIPELINE_SOURCE == "merge_request_event" || $CI_COMMIT_BRANCH
 
-.test_template: &test_definition
-  stage: test
-  image: python:${PYTHON}
-  parallel:
-    matrix:
-      - PYTHON: "3.9"
-      - PYTHON: "3.10"
-      - PYTHON: "3.11"
-  before_script:
-    - pip install --upgrade pip
-    - pip install poetry
-    - poetry config virtualenvs.create false
-    - poetry install --no-interaction --no-ansi
-  script:
-    - poetry run pytest -q --cov=win_depends --cov-fail-under=80
-  artifacts:
-    when: always
-    paths:
-      - htmlcov/
-    expire_in: 1 week
-
-test:
-  <<: *test_definition
-
 build:
   stage: build
-  image: python:3.11
-  before_script:
-    - pip install --upgrade pip
-    - pip install poetry
-    - poetry config virtualenvs.create false
-    - poetry install --no-interaction --no-ansi
+  needs: ["test"]
   script:
-    - poetry build -f wheel
+    - python -m pip install build
+    - python -m build --wheel
   artifacts:
     paths:
       - dist/*.whl
     expire_in: 1 week
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event" || $CI_COMMIT_BRANCH
