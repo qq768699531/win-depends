@@ -17,13 +17,13 @@ Tests & linters
 High-level architecture (big picture)
 - CLI layer: win_depends.cli parses args and drives the analysis. It calls build_dependency_graph() in core.
 - Core analysis: win_depends.core performs file discovery and dependency resolution, using pefile for PE parsing and a thread pool (default 16 threads) for parallel scanning.
-- Data model: Node / Edge / Graph classes (node.py, edge.py, graph.py) represent files and relationships. Graph exposes helpers: print_tree(max_depth), export_dot(), etc.
-- Output: printer.py contains presentation helpers (print_orphan, print_missing, print_invalid) and DOT export is produced from Graph.
+- Data model: Graph uses networkx `DiGraph` to represent relations, with `NodeData`/`EdgeData` as state payloads (nodedata.py, edgedata.py, graph.py).
+- Output: printer.py contains presentation helpers (print_orphan, print_missing, print_invalid, print_tree, export_dot) and consumes graph data.
 - Packaging: pyproject.toml is the canonical package metadata and build entry point. Third-party runtime deps: pefile, tqdm.
 
 Key repository conventions and notes
 - Single-package layout: package name and top-level module both `win_depends`. Keep module and console script names aligned.
-- CLI version string is hardcoded in cli.py (`--version` uses "0.1.5") while pyproject.toml has version `0.1.5.2`. Keep these synchronized when releasing.
+- CLI version string is hardcoded in cli.py (`--version` uses "1.0.0") while pyproject.toml has version `1.0.0`. Keep these synchronized when releasing.
 - Build artifacts (build/, dist/, *.egg-info) may exist in-tree. Prefer rebuilding via `python -m build` rather than editing generated files in build/ or dist/.
 - Threading: core uses a thread-pool with a default of 16 threads; tests or debugging runs may want a smaller number to simplify output.
 - PE parsing: rely on pefile for import parsing; defensive handling required for malformed or packed binaries.
@@ -31,7 +31,7 @@ Key repository conventions and notes
 Relevant files to inspect when changing behavior
 - CLI behavior and flags: win_depends/cli.py
 - Main analysis logic: win_depends/core.py
-- Data model: win_depends/node.py, win_depends/edge.py, win_depends/graph.py
+- Data model: win_depends/nodedata.py, win_depends/edgedata.py, win_depends/graph.py
 - Output formatting: win_depends/printer.py
 - Packaging: pyproject.toml
 

@@ -3,12 +3,12 @@ import os
 import sys
 import time
 from .core import build_dependency_graph
-from .printer import print_orphan, print_missing, print_invalid
+from .printer import print_orphan, print_missing, print_invalid, print_tree, export_dot
 
 
 def main():
     parser = argparse.ArgumentParser(description="Analyze DLL/EXE dependencies.")
-    parser.add_argument("-v", "--version", action="version", version="0.1.5")
+    parser.add_argument("-v", "--version", action="version", version="1.0.0")
     parser.add_argument("target", help="Target DLL/EXE file or directory.")
     parser.add_argument(
         "--tree",
@@ -84,9 +84,9 @@ def main():
     if args.check_invalid:
         print_invalid(dep_graph)
     if args.tree is not None:
-        dep_graph.print_tree(max_depth=args.tree)
+        print_tree(dep_graph, max_depth=args.tree)
     if args.graph:
-        dot = dep_graph.export_dot()
+        dot = export_dot(dep_graph)
         if args.dot:
             with open(args.dot, "w", encoding="utf-8") as f:
                 f.write(dot)

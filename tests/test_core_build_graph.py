@@ -71,8 +71,8 @@ def test__build_dependency_graph_monkeypatched(monkeypatch, tmp_path):
 
     graph = core._build_dependency_graph([a], detect_system=False, verbose=False, threads=2)
     # verify nodes and edge added
-    assert a in graph.nodes
-    assert b in graph.nodes
+    assert a in graph.graph.nodes
+    assert b in graph.graph.nodes
     # find an edge from a->b
-    edges = [(e.parent.path, e.child.path) for e in graph.edges.values()]
+    edges = list(graph.graph.edges)
     assert any(p == a and c == b for p, c in edges)

@@ -1,37 +1,37 @@
-from win_depends.node import DependencyNode
-from win_depends.edge import DependencyEdge
+from win_depends.nodedata import NodeData
+from win_depends.edgedata import EdgeData
 
 
-def test_dependency_node_repr_and_flags():
-    node = DependencyNode(r"C:\path\to\libA.dll", is_system=True)
-    node.is_orphan = True
-    node.is_forward = True
-    node.forward_to = r"C:\path\to\libB.dll"
-    r = repr(node)
-    assert "libA.dll" in r
-    assert "[SYS]" in r
-    assert "(orphan)" in r
-    assert "->" in r or "forward" in r
+def test_nodedata_label_and_flags():
+    node_data = NodeData(
+        is_system=True,
+        is_orphan=True,
+        is_forward=True,
+        forward_to=[r"C:\path\to\libB.dll"],
+    )
+    label = node_data.label(r"C:\path\to\libA.dll")
+    assert "libA.dll" in label
+    assert "libB.dll" in label
+    assert "[SYS]" in label
+    assert "(orphan)" in label
+    assert "->" in label or "forward" in label
 
 
-def test_dependency_edge_statuses():
-    parent = object()
-    child = object()
-    e_missing = DependencyEdge(parent, child, is_delay=False, is_missing=True, is_valid=False)
+def test_edgedata_statuses():
+    e_missing = EdgeData(is_delay=False, is_missing=True, is_valid=False)
     assert "❌" in "".join(e_missing.status_emojis())
     assert "[MISSING]" in "".join(e_missing.status_flags())
     assert e_missing.status_color() == "red"
 
-    e_invalid = DependencyEdge(parent, child, is_delay=False, is_missing=False, is_valid=False)
+    e_invalid = EdgeData(is_delay=False, is_missing=False, is_valid=False)
     assert "❗" in "".join(e_invalid.status_emojis())
     assert "[INVALID]" in "".join(e_invalid.status_flags())
     assert e_invalid.status_color() == "orange"
 
-    e_delay = DependencyEdge(parent, child, is_delay=True, is_missing=False, is_valid=True)
+    e_delay = EdgeData(is_delay=True, is_missing=False, is_valid=True)
     assert "⏳" in "".join(e_delay.status_emojis())
     assert "[DELAY]" in "".join(e_delay.status_flags())
     assert e_delay.status_color() == "blue"
 
-    e_cycle = DependencyEdge(parent, child, is_delay=False, is_missing=False, is_valid=True)
-    e_cycle.in_cycle = True
+    e_cycle = EdgeData(is_delay=False, is_missing=False, is_valid=True, in_cycle=True)
     assert "🔁" in "".join(e_cycle.status_emojis())

@@ -1,24 +1,16 @@
-import os
-
-
-class DependencyEdge:
-    def __init__(self, parent, child, is_delay, is_missing, is_valid):
-        self.parent = parent
-        self.child = child
+class EdgeData:
+    def __init__(
+        self,
+        *,
+        is_delay: bool = False,
+        is_missing: bool = False,
+        is_valid: bool = True,
+        in_cycle: bool = False,
+    ):
         self.is_delay = is_delay
         self.is_missing = is_missing
         self.is_valid = is_valid
-        self.in_cycle = False
-
-    def __hash__(self):
-        return hash((self.parent, self.child))
-
-    def __eq__(self, other):
-        return (
-            isinstance(other, DependencyEdge)
-            and self.parent == other.parent
-            and self.child == other.child
-        )
+        self.in_cycle = in_cycle
 
     def status_emojis(self):
         flags = []

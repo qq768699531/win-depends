@@ -4,7 +4,7 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.poetry]
 name = "win_depends"
-version = "0.1.5.2"
+version = "1.0.0"
 description = "Windows DLL/EXE dependency tree and graph tool"
 authors = ["Vorga"]
 license = "MIT"
@@ -15,6 +15,7 @@ packages = [{ include = "win_depends" }]
 python = "^3.9"
 tqdm = ">=4.64.1"
 pefile = ">=2024.5.17"
+networkx = ">=3.0"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^7.0"

@@ -46,8 +46,10 @@ win_depends --tree
 ## 🔍 Features
 
 * ✅ Analyze imports between `.dll` and `.exe` files, including delayed and bound imports
+* ✅ Detect forwarded exports and surface forwarding targets directly in tree / missing / invalid outputs (DLL name only)
+* ✅ Resolve `api-ms-*` / `ext-ms-*` contracts to host DLLs (for example `kernelbase.dll`) to avoid false missing reports
 * ✅ Parallel dependency analysis for faster performance
-* ✅ Optional detection of system DLLs via `--detect-system`
+* ✅ Automatic detection of system DLLs (always enabled)
 * ✅ Detect missing dependent files
 * ✅ Detect unused files in directory
 * ✅ Tree-style output of dependencies

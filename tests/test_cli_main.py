@@ -18,3 +18,21 @@ def test_cli_main_basic(monkeypatch, tmp_path, capsys):
     cli.main()
     out = capsys.readouterr().out
     assert "Analyzing dependencies in" in out
+
+
+def test_cli_main_no_check_forward_flag(monkeypatch, tmp_path):
+    f = tmp_path / "a.dll"
+    f.write_text("x")
+
+    def fake_build(path, detect_system=False, verbose=False, threads=16):
+        return DependencyGraph()
+
+    monkeypatch.setattr(core, "build_dependency_graph", fake_build)
+    monkeypatch.setattr(sys, "argv", ["win_depends", str(f), "--check-forward"])
+
+    try:
+        cli.main()
+    except SystemExit as exc:
+        assert exc.code == 2
+    else:
+        raise AssertionError("Expected argparse to reject --check-forward")
