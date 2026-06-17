@@ -31,17 +31,26 @@ def _normalize_forward_target_dll(forwarder):
     return dll_part.lower()
 
 
-def _collect_import_tokens(entry):
-    tokens = set()
+def _collect_import_requirements(entry):
+    requirements = []
     for item in entry.imports:
-        token = None
+        candidates = set()
         if item.name:
-            token = _symbol_token(name=item.name)
-        elif item.ordinal:
-            token = _symbol_token(ordinal=item.ordinal)
-        if token:
-            tokens.add(token)
-    return tokens
+            name_token = _symbol_token(name=item.name)
+            if name_token:
+                candidates.add(name_token)
+        if item.ordinal is not None:
+            ordinal_token = _symbol_token(ordinal=item.ordinal)
+            if ordinal_token:
+                candidates.add(ordinal_token)
+        # For import-by-name with ordinal-only exports, hint can map to export ordinal.
+        if getattr(item, "hint", None) is not None:
+            hint_token = _symbol_token(ordinal=item.hint)
+            if hint_token:
+                candidates.add(hint_token)
+        if candidates:
+            requirements.append(candidates)
+    return requirements
 
 
 @lru_cache(maxsize=512)

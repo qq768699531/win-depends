@@ -4,7 +4,7 @@ from tqdm import tqdm
 from .apiset import resolve_apiset_contract, is_apiset_contract
 from .graph import DependencyGraph
 from .edgedata import EdgeData
-from .petool import _collect_import_tokens, _load_exports_for_file
+from .petool import _collect_import_requirements, _load_exports_for_file
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from functools import lru_cache
 from dataclasses import dataclass, field
@@ -119,18 +119,22 @@ def _resolve_dependency_target(base_dir, entry_name):
     )
 
 
-def _evaluate_resolved_dependency(resolution: DependencyResolution, import_tokens):
+def _evaluate_resolved_dependency(resolution: DependencyResolution, import_requirements):
     if resolution.is_missing:
         return False, False, ""
 
     dep_export_set, dep_forward_map = _load_exports_for_file(resolution.export_source_path)
     resolvable_exports = dep_export_set | set(dep_forward_map.keys())
-    dll_is_valid = import_tokens.issubset(resolvable_exports)
+    dll_is_valid = all(
+        any(candidate in resolvable_exports for candidate in requirement)
+        for requirement in import_requirements
+    )
     matched_forwarders = sorted(
         {
-            dep_forward_map[import_key]
-            for import_key in import_tokens
-            if import_key in dep_forward_map
+            dep_forward_map[candidate]
+            for requirement in import_requirements
+            for candidate in requirement
+            if candidate in dep_forward_map
         }
     )
     dll_is_forward = bool(matched_forwarders) or bool(resolution.forward_to)
@@ -152,10 +156,10 @@ def parse_file_for_dependencies(base_dir, base_file):
         for entry in entries:
             entry: pefile.ImportData
             entry_name = entry.dll.decode(errors="ignore")
-            import_tokens = _collect_import_tokens(entry)
+            import_requirements = _collect_import_requirements(entry)
             resolution = _resolve_dependency_target(base_dir, entry_name)
             dll_is_valid, dll_is_forward, dll_forward_to = _evaluate_resolved_dependency(
-                resolution, import_tokens
+                resolution, import_requirements
             )
             result.add(
                 resolution.dll_path,

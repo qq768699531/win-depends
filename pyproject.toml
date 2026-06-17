@@ -4,7 +4,7 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.poetry]
 name = "win_depends"
-version = "1.0.0"
+version = "1.0.1"
 description = "Windows DLL/EXE dependency tree and graph tool"
 authors = ["Vorga"]
 license = "MIT"
