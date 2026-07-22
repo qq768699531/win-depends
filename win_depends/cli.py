@@ -8,7 +8,7 @@ from .printer import print_orphan, print_missing, print_invalid, print_tree, exp
 
 def main():
     parser = argparse.ArgumentParser(description="Analyze DLL/EXE dependencies.")
-    parser.add_argument("-v", "--version", action="version", version="1.0.1")
+    parser.add_argument("-v", "--version", action="version", version="1.0.2")
     parser.add_argument("target", help="Target DLL/EXE file or directory.")
     parser.add_argument(
         "--tree",

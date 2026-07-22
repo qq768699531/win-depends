@@ -10,6 +10,49 @@ from functools import lru_cache
 from dataclasses import dataclass, field
 
 
+def _import_directory_ids():
+    directory_entry = getattr(pefile, "DIRECTORY_ENTRY", {})
+    return [
+        directory_entry.get("IMAGE_DIRECTORY_ENTRY_IMPORT", 1),
+        directory_entry.get("IMAGE_DIRECTORY_ENTRY_BOUND_IMPORT", 11),
+        directory_entry.get("IMAGE_DIRECTORY_ENTRY_DELAY_IMPORT", 13),
+    ]
+
+
+def _match_ordinals(ordinal_tokens, resolvable_exports):
+    return {candidate for candidate in ordinal_tokens if candidate in resolvable_exports}
+
+
+def _collect_forward_candidates(candidates, dep_forward_map):
+    return {candidate for candidate in candidates if candidate in dep_forward_map}
+
+
+def _evaluate_requirement(
+    requirement, resolvable_exports, dep_forward_map, has_named_exports
+):
+    name_token = requirement.get("name")
+    ordinal_tokens = requirement.get("ordinals", set())
+
+    if name_token:
+        if name_token in resolvable_exports:
+            return True, _collect_forward_candidates({name_token}, dep_forward_map)
+        # 目标 DLL 存在命名导出时，按名称严格匹配。
+        if has_named_exports:
+            return False, set()
+        # 目标 DLL 仅 ordinal 导出时，允许 ordinal/hint 兜底。
+        matched_ordinals = _match_ordinals(ordinal_tokens, resolvable_exports)
+        if not matched_ordinals:
+            return False, set()
+        return True, _collect_forward_candidates(matched_ordinals, dep_forward_map)
+
+    if not ordinal_tokens:
+        return False, set()
+    matched_ordinals = _match_ordinals(ordinal_tokens, resolvable_exports)
+    if not matched_ordinals:
+        return False, set()
+    return True, _collect_forward_candidates(matched_ordinals, dep_forward_map)
+
+
 @lru_cache(maxsize=1)
 def get_system_search_paths():
     return [p for p in os.environ.get("PATH", "").split(os.pathsep) if os.path.isdir(p)]
@@ -125,36 +168,41 @@ def _evaluate_resolved_dependency(resolution: DependencyResolution, import_requi
 
     dep_export_set, dep_forward_map = _load_exports_for_file(resolution.export_source_path)
     resolvable_exports = dep_export_set | set(dep_forward_map.keys())
-    dll_is_valid = all(
-        any(candidate in resolvable_exports for candidate in requirement)
-        for requirement in import_requirements
-    )
+    has_named_exports = any(token.startswith("N:") for token in dep_export_set)
+    matched_forward_candidates = set()
+
+    for requirement in import_requirements:
+        requirement_valid, requirement_forward_candidates = _evaluate_requirement(
+            requirement=requirement,
+            resolvable_exports=resolvable_exports,
+            dep_forward_map=dep_forward_map,
+            has_named_exports=has_named_exports,
+        )
+        if not requirement_valid:
+            return False, False, []
+        matched_forward_candidates |= requirement_forward_candidates
+
     matched_forwarders = sorted(
-        {
-            dep_forward_map[candidate]
-            for requirement in import_requirements
-            for candidate in requirement
-            if candidate in dep_forward_map
-        }
+        {dep_forward_map[candidate] for candidate in matched_forward_candidates}
     )
     dll_is_forward = bool(matched_forwarders) or bool(resolution.forward_to)
     forward_to = resolution.forward_to or matched_forwarders
-    return dll_is_valid, dll_is_forward, forward_to
+    # 既然可以走到这里, 那么依赖当然是有效的, 只不过可能是一个转发依赖
+    return True, dll_is_forward, forward_to
 
 
 def parse_file_for_dependencies(base_dir, base_file):
     result = DependencyParseResult()
 
     pe_base = pefile.PE(base_file, fast_load=True)
-    pe_base.parse_data_directories(1)
+    pe_base.parse_data_directories(_import_directory_ids())
     pe_base_imports = getattr(pe_base, "DIRECTORY_ENTRY_IMPORT", [])
     pe_base_delay_imports = getattr(pe_base, "DIRECTORY_ENTRY_DELAY_IMPORT", [])
     pe_base_bound_imports = getattr(pe_base, "DIRECTORY_ENTRY_BOUND_IMPORT", [])
 
-    for entries in pe_base_imports, pe_base_delay_imports, pe_base_bound_imports:
-        entries: pefile.ImportDescData
+    import_groups = (pe_base_imports, pe_base_delay_imports, pe_base_bound_imports)
+    for entries in import_groups:
         for entry in entries:
-            entry: pefile.ImportData
             entry_name = entry.dll.decode(errors="ignore")
             import_requirements = _collect_import_requirements(entry)
             resolution = _resolve_dependency_target(base_dir, entry_name)
@@ -165,7 +213,7 @@ def parse_file_for_dependencies(base_dir, base_file):
                 resolution.dll_path,
                 resolution.is_missing,
                 dll_is_valid,
-                (entry in pe_base_delay_imports) if not resolution.is_missing else False,
+                (entry in pe_base_delay_imports),
                 resolution.is_system,
                 dll_is_forward,
                 dll_forward_to,
@@ -218,7 +266,7 @@ def _build_dependency_graph(root_files, detect_system=False, verbose=False, thre
             submit(abs_file)
 
         while futures:
-            # 使用as_completed保证并发性能
+            # 使用 as_completed 保持并发处理效率。
             for future in as_completed(list(futures.keys())):
                 parent_path = futures.pop(future)
 

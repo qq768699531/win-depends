@@ -34,22 +34,25 @@ def _normalize_forward_target_dll(forwarder):
 def _collect_import_requirements(entry):
     requirements = []
     for item in entry.imports:
-        candidates = set()
+        name_token = None
+        ordinal_tokens = set()
         if item.name:
             name_token = _symbol_token(name=item.name)
-            if name_token:
-                candidates.add(name_token)
         if item.ordinal is not None:
             ordinal_token = _symbol_token(ordinal=item.ordinal)
             if ordinal_token:
-                candidates.add(ordinal_token)
-        # For import-by-name with ordinal-only exports, hint can map to export ordinal.
+                ordinal_tokens.add(ordinal_token)
+        # hint 作为 ordinal 兜底候选，是否启用由调用方判定。
         if getattr(item, "hint", None) is not None:
             hint_token = _symbol_token(ordinal=item.hint)
             if hint_token:
-                candidates.add(hint_token)
-        if candidates:
-            requirements.append(candidates)
+                ordinal_tokens.add(hint_token)
+        requirements.append(
+            {
+                "name": name_token,
+                "ordinals": ordinal_tokens,
+            }
+        )
     return requirements
 
 
