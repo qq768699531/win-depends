@@ -1,3 +1,5 @@
+import pytest
+
 from win_depends.graph import DependencyGraph
 from win_depends.edgedata import EdgeData
 from win_depends.nodedata import NodeData
@@ -43,3 +45,15 @@ def test_graph_should_expand():
     assert g.should_expand(node_data=NodeData(is_virtual=False), edge_data=EdgeData(is_missing=False))
     assert not g.should_expand(node_data=NodeData(is_virtual=False), edge_data=EdgeData(is_missing=True))
     assert not g.should_expand(node_data=NodeData(is_virtual=True), edge_data=EdgeData(is_missing=False))
+
+
+@pytest.mark.parametrize("delays", [(False, True), (True, False), (True, True)])
+def test_duplicate_imports_preserve_required_edge(delays):
+    graph = DependencyGraph()
+    for is_delay in delays:
+        graph.add_edge(
+            "app.exe", "missing.dll", EdgeData(is_delay=is_delay, is_missing=True)
+        )
+    data = graph.graph.edges["app.exe", "missing.dll"]["data"]
+    assert data.is_delay == all(delays)
+    assert data.is_missing

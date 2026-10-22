@@ -43,23 +43,70 @@ def print_orphan(graph: DependencyGraph):
         print("🧩 No orphan DLLs.")
 
 
+def _required_nodes(graph: DependencyGraph):
+    g = graph.graph
+    roots = g.graph.get("entry_points")
+    if roots is None:
+        # Source components also cover graphs whose roots participate in cycles.
+        components = nx.condensation(g)
+        roots = [
+            path
+            for component, attrs in components.nodes(data=True)
+            if components.in_degree(component) == 0
+            for path in attrs["members"]
+        ]
+    required = set(roots)
+    pending = list(roots)
+    while pending:
+        parent = pending.pop()
+        for child, attrs in g[parent].items():
+            if not attrs["data"].is_delay and child not in required:
+                required.add(child)
+                pending.append(child)
+    return required
+
+
 def print_missing(graph: DependencyGraph):
     g = graph.graph
-    missing = []
-    for _, child_path, edge_attrs in g.edges(data=True):
+    required = _required_nodes(graph)
+    missing = {}
+    for parent_path, child_path, edge_attrs in g.edges(data=True):
         if edge_attrs["data"].is_missing:
-            missing.append(child_path)
+            is_delay = edge_attrs["data"].is_delay or parent_path not in required
+            missing.setdefault(child_path, []).append((parent_path, is_delay))
 
-    missing.sort(key=lambda x: x.lower())
     if not missing:
         print("✅ No missing dependencies.")
         return
-    print("❌ Missing dependencies:")
-    for node_path in missing:
-        node_data = g.nodes[node_path]["data"]
-        print(f"  ❌ {os.path.basename(node_path)}{_forward_suffix(node_path, node_data)}")
-        for parent_path in g.predecessors(node_path):
-            print(f"    ↳ Required by: {os.path.basename(parent_path)}")
+    for delayed_only in (False, True):
+        paths = sorted(
+            (
+                path
+                for path, parents in missing.items()
+                if all(is_delay for _, is_delay in parents) == delayed_only
+            ),
+            key=str.lower,
+        )
+        if not paths:
+            continue
+        marker = "⚠️" if delayed_only else "❌"
+        title = (
+            "Missing dependencies (delay-loaded; warning only):"
+            if delayed_only
+            else "Missing dependencies:"
+        )
+        print(f"{marker} {title}")
+        for node_path in paths:
+            node_data = g.nodes[node_path]["data"]
+            print(
+                f"  {marker} {os.path.basename(node_path)}"
+                f"{_forward_suffix(node_path, node_data)}"
+            )
+            for parent_path, is_delay in sorted(
+                missing[node_path], key=lambda item: item[0].lower()
+            ):
+                suffix = " [DELAY-LOADED]" if is_delay else ""
+                print(f"    ↳ Required by: {os.path.basename(parent_path)}{suffix}")
 
 
 def print_invalid(graph: DependencyGraph):

@@ -76,3 +76,19 @@ def test__build_dependency_graph_monkeypatched(monkeypatch, tmp_path):
     # find an edge from a->b
     edges = list(graph.graph.edges)
     assert any(p == a and c == b for p, c in edges)
+
+
+def test_build_graph_keeps_file_entry_point_only(monkeypatch, tmp_path):
+    from win_depends.graph import DependencyGraph
+
+    target = tmp_path / "app.exe"
+    target.write_bytes(b"")
+
+    def fake_build(*args):
+        return DependencyGraph()
+
+    monkeypatch.setattr(core, "_build_dependency_graph", fake_build)
+    file_graph = core.build_dependency_graph(str(target))
+    assert file_graph.graph.graph["entry_points"] == [str(target)]
+    directory_graph = core.build_dependency_graph(str(tmp_path))
+    assert "entry_points" not in directory_graph.graph.graph

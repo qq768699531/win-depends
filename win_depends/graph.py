@@ -39,5 +39,8 @@ class DependencyGraph:
     def add_edge(self, src: str, dst: str, data: EdgeData | None = None):
         self.ensure_node(src)
         self.ensure_node(dst)
-        self._g.add_edge(src, dst, data=data or EdgeData())
+        data = data or EdgeData()
+        if self._g.has_edge(src, dst):
+            data.is_delay = data.is_delay and self._g.edges[src, dst]["data"].is_delay
+        self._g.add_edge(src, dst, data=data)
         return (src, dst)
