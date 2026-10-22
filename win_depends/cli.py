@@ -8,7 +8,7 @@ from .printer import print_orphan, print_missing, print_invalid, print_tree, exp
 
 def main():
     parser = argparse.ArgumentParser(description="Analyze DLL/EXE dependencies.")
-    parser.add_argument("-v", "--version", action="version", version="1.0.2")
+    parser.add_argument("-v", "--version", action="version", version="1.0.3")
     parser.add_argument("target", help="Target DLL/EXE file or directory.")
     parser.add_argument(
         "--tree",
@@ -23,7 +23,9 @@ def main():
     )
     parser.add_argument("--dot", metavar="FILENAME", help="Write DOT graph to file.")
     parser.add_argument(
-        "--check-missing", action="store_true", help="Check for missing dependencies."
+        "--check-missing",
+        action="store_true",
+        help="Check for missing dependencies; delay-loaded chains are warnings only.",
     )
     parser.add_argument(
         "--check-invalid",

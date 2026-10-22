@@ -341,4 +341,7 @@ def build_dependency_graph(path, detect_system=False, verbose=False, threads=16)
         ]
     else:
         files = [abs_path]
-    return _build_dependency_graph(files, detect_system, verbose, threads)
+    graph = _build_dependency_graph(files, detect_system, verbose, threads)
+    if not os.path.isdir(abs_path):
+        graph.graph.graph["entry_points"] = [abs_path]
+    return graph
