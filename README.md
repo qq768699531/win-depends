@@ -109,7 +109,9 @@ python -m pip install build
 python -m build --wheel
 ```
 
-GitHub Actions runs the tests and builds a wheel for pushes and pull requests.
+GitHub Actions runs the tests on Windows with Python 3.11 and builds a wheel
+for pushes and pull requests. Windows runners are required for the Windows
+API-set memory layout and path-handling tests.
 See the [changelog](CHANGELOG.md) for release notes and unreleased changes.
 Maintainers can follow the [release guide](RELEASE.md) to publish matching
 GitHub Releases and PyPI distributions.

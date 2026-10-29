@@ -12,6 +12,16 @@ Notable changes to `win_depends` are documented here.
 - Add a manual GitHub Release and PyPI publishing guide and a public PyPI
   version badge.
 
+### Fixed
+
+- Run GitHub Actions on Windows so API-set memory and Windows path tests use
+  the platform supported by the analyzer.
+
+### Removed
+
+- Remove GitLab CI configuration and switch the Flake8 hook to its GitHub
+  repository. GitHub Actions is the sole CI entry point.
+
 ## 1.0.3
 
 ### Changed
