@@ -3,39 +3,46 @@ import os
 import sys
 import time
 from .core import build_dependency_graph
-from .printer import print_orphan, print_missing, print_invalid, print_tree, export_dot
+from .exporter import export
+from .printer import print_orphan, print_missing, print_invalid, print_tree
 
 
 def main():
     parser = argparse.ArgumentParser(description="Analyze DLL/EXE dependencies.")
-    parser.add_argument("-v", "--version", action="version", version="1.0.3")
+    parser.add_argument("-v", "--version", action="version", version="1.1.0")
     parser.add_argument("target", help="Target DLL/EXE file or directory.")
     parser.add_argument(
-        "--tree",
-        nargs="?",
-        const=-1,
+        "-d",
+        "--depth",
         type=int,
-        metavar="LEVEL",
-        help="Print dependency tree up to specified depth (default: unlimited).",
+        metavar="N",
+        help="Limit graph construction depth (entry points: 0; default: unlimited).",
     )
     parser.add_argument(
-        "--graph", action="store_true", help="Print dependency graph in DOT format."
+        "-o",
+        "--out",
+        metavar="FILE",
+        help="Export the complete graph as CSV, JSON, HTML, DOT or TXT (by extension).",
     )
-    parser.add_argument("--dot", metavar="FILENAME", help="Write DOT graph to file.")
     parser.add_argument(
-        "--check-missing",
+        "--print-tree",
         action="store_true",
-        help="Check for missing dependencies; delay-loaded chains are warnings only.",
+        help="Print the analyzed dependency tree.",
     )
     parser.add_argument(
-        "--check-invalid",
+        "--print-missing",
         action="store_true",
-        help="Check if dependencies are loadable.",
+        help="Print missing dependencies; delay-loaded chains are warnings only.",
     )
     parser.add_argument(
-        "--check-orphan",
+        "--print-invalid",
         action="store_true",
-        help="Check for orphan local DLL/EXE files.",
+        help="Print dependencies with unresolved imports.",
+    )
+    parser.add_argument(
+        "--print-orphan",
+        action="store_true",
+        help="Print orphan local DLL files.",
     )
     parser.add_argument(
         "--detect-system",
@@ -43,6 +50,7 @@ def main():
         help="Analyze system DLLs (default: off; only analyzes files in current directory).",
     )
     parser.add_argument(
+        "-t",
         "--threads",
         type=int,
         default=16,
@@ -50,13 +58,15 @@ def main():
         help="Number of threads to use in the thread pool (default: 16).",
     )
     parser.add_argument(
+        "-V",
         "--verbose",
         action="store_true",
         help="Print detailed output for debugging.",
     )
 
     args = parser.parse_args()
-
+    if args.depth is not None and args.depth < 0:
+        parser.error("--depth must be nonnegative")
     start = time.perf_counter()
 
     target = args.target
@@ -75,26 +85,22 @@ def main():
         detect_system=args.detect_system,
         verbose=args.verbose,
         threads=args.threads,
+        depth=args.depth,
     )
 
     print(f"Analyzing dependencies in: {base_dir}")
 
-    if args.check_orphan:
+    if args.print_tree:
+        print_tree(dep_graph)
+    if args.print_orphan:
         print_orphan(dep_graph)
-    if args.check_missing:
+    if args.print_missing:
         print_missing(dep_graph)
-    if args.check_invalid:
+    if args.print_invalid:
         print_invalid(dep_graph)
-    if args.tree is not None:
-        print_tree(dep_graph, max_depth=args.tree)
-    if args.graph:
-        dot = export_dot(dep_graph)
-        if args.dot:
-            with open(args.dot, "w", encoding="utf-8") as f:
-                f.write(dot)
-            print(f"DOT graph written to: {args.dot}")
-        else:
-            print(dot)
+    if args.out is not None:
+        export(dep_graph, args.out)
+        print(f"Dependency graph written to: {args.out}")
 
     print(f"Total time: {time.perf_counter() - start:.2f}s")
 

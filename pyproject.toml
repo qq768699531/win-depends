@@ -4,18 +4,20 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.poetry]
 name = "win_depends"
-version = "1.0.3"
+version = "1.1.0"
 description = "Windows DLL/EXE dependency tree and graph tool"
 authors = ["Vorga"]
 license = "MIT"
 readme = "README.md"
 packages = [{ include = "win_depends" }]
+include = [{ path = "win_depends/pyvis_options.json", format = ["sdist", "wheel"] }]
 
 [tool.poetry.dependencies]
 python = "^3.9"
 tqdm = ">=4.64.1"
 pefile = ">=2024.5.17"
 networkx = ">=3.0"
+pyvis = ">=0.3.2"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^7.0"
@@ -24,6 +26,8 @@ black = "^24.0"
 isort = "^5.0"
 flake8 = "^6.0"
 pre-commit = "^4.0"
+html5lib = "^1.1"
+pydot = "^3.0"
 
 [tool.poetry.scripts]
 win_depends = "win_depends.cli:main"

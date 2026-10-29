@@ -16,8 +16,8 @@ def test_add_edge_and_cycle_detection(capsys):
     assert "A" in g.graph.nodes
     assert "B" in g.graph.nodes
     assert "C" in g.graph.nodes
-    # Mark cycles via tree rendering path
-    print_tree(g, max_depth=3)
+    g.detect_cycle()
+    print_tree(g)
     _ = capsys.readouterr()
     # At least one edge should be in a cycle
     assert any(attrs["data"].in_cycle for _, _, attrs in g.graph.edges(data=True))

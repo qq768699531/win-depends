@@ -1,11 +1,12 @@
-import networkx as nx
+import networkx
+
 from .edgedata import EdgeData
 from .nodedata import NodeData
 
 
 class DependencyGraph:
     def __init__(self):
-        self._g = nx.DiGraph()
+        self._g = networkx.DiGraph()
 
     @property
     def graph(self):
@@ -21,6 +22,17 @@ class DependencyGraph:
     def node_data(self, path: str):
         self.ensure_node(path)
         return self._g.nodes[path]["data"]
+
+    def detect_cycle(self):
+        components = {
+            path: index
+            for index, members in enumerate(
+                networkx.strongly_connected_components(self._g)
+            )
+            for path in members
+        }
+        for src, dst, attrs in self._g.edges(data=True):
+            attrs["data"].in_cycle = components[src] == components[dst]
 
     @staticmethod
     def should_include(*, edge_data: EdgeData, is_system: bool, detect_system: bool):

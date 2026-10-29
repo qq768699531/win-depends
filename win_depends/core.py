@@ -20,7 +20,9 @@ def _import_directory_ids():
 
 
 def _match_ordinals(ordinal_tokens, resolvable_exports):
-    return {candidate for candidate in ordinal_tokens if candidate in resolvable_exports}
+    return {
+        candidate for candidate in ordinal_tokens if candidate in resolvable_exports
+    }
 
 
 def _collect_forward_candidates(candidates, dep_forward_map):
@@ -142,7 +144,9 @@ def _resolve_dependency_target(base_dir, entry_name):
 
     if is_apiset_contract(entry_name):
         apiset_host_name = resolve_apiset_contract(entry_name.lower())
-        apiset_host_path = find_system_dll(apiset_host_name) if apiset_host_name else None
+        apiset_host_path = (
+            find_system_dll(apiset_host_name) if apiset_host_name else None
+        )
         if apiset_host_path:
             return DependencyResolution(
                 dll_path=entry_name,
@@ -162,11 +166,15 @@ def _resolve_dependency_target(base_dir, entry_name):
     )
 
 
-def _evaluate_resolved_dependency(resolution: DependencyResolution, import_requirements):
+def _evaluate_resolved_dependency(
+    resolution: DependencyResolution, import_requirements
+):
     if resolution.is_missing:
         return False, False, ""
 
-    dep_export_set, dep_forward_map = _load_exports_for_file(resolution.export_source_path)
+    dep_export_set, dep_forward_map = _load_exports_for_file(
+        resolution.export_source_path
+    )
     resolvable_exports = dep_export_set | set(dep_forward_map.keys())
     has_named_exports = any(token.startswith("N:") for token in dep_export_set)
     matched_forward_candidates = set()
@@ -206,8 +214,8 @@ def parse_file_for_dependencies(base_dir, base_file):
             entry_name = entry.dll.decode(errors="ignore")
             import_requirements = _collect_import_requirements(entry)
             resolution = _resolve_dependency_target(base_dir, entry_name)
-            dll_is_valid, dll_is_forward, dll_forward_to = _evaluate_resolved_dependency(
-                resolution, import_requirements
+            dll_is_valid, dll_is_forward, dll_forward_to = (
+                _evaluate_resolved_dependency(resolution, import_requirements)
             )
             result.add(
                 resolution.dll_path,
@@ -224,11 +232,17 @@ def parse_file_for_dependencies(base_dir, base_file):
     return result
 
 
-def _build_dependency_graph(root_files, detect_system=False, verbose=False, threads=16):
+def _build_dependency_graph(
+    root_files, detect_system=False, verbose=False, threads=16, depth=None
+):
+    if depth is not None and depth < 0:
+        raise ValueError("depth must be nonnegative")
+    graph = DependencyGraph()
+    if not root_files:
+        return graph
     pbar = tqdm(total=0, desc="Resolving dependencies", unit="file", dynamic_ncols=True)
     abs_files = [os.path.abspath(path) for path in root_files]
     base_dir = os.path.dirname(abs_files[0])
-    graph = DependencyGraph()
     submitted = set()
 
     def upsert_node(
@@ -263,10 +277,12 @@ def _build_dependency_graph(root_files, detect_system=False, verbose=False, thre
         for abs_file in abs_files:
             upsert_node(abs_file)
             submitted.add(abs_file)
-            submit(abs_file)
+            if depth != 0:
+                submit(abs_file)
 
+        level = 0
         while futures:
-            # 使用 as_completed 保持并发处理效率。
+            next_level = []
             for future in as_completed(list(futures.keys())):
                 parent_path = futures.pop(future)
 
@@ -319,19 +335,25 @@ def _build_dependency_graph(root_files, detect_system=False, verbose=False, thre
                         continue
                     if child_node not in submitted:
                         submitted.add(child_node)
-                        submit(child_node)
+                        if depth is None or level + 1 < depth:
+                            next_level.append(child_node)
                 pbar.update(1)
-                break
+            level += 1
+            for child_node in next_level:
+                submit(child_node)
 
     for node_path, node_attrs in graph.graph.nodes(data=True):
         if node_path.lower().endswith(".dll") and graph.graph.in_degree(node_path) == 0:
             node_attrs["data"].is_orphan = True
 
+    graph.detect_cycle()
     pbar.close()
     return graph
 
 
-def build_dependency_graph(path, detect_system=False, verbose=False, threads=16):
+def build_dependency_graph(
+    path, detect_system=False, verbose=False, threads=16, depth=None
+):
     abs_path = os.path.abspath(path)
     if os.path.isdir(abs_path):
         files = [
@@ -341,7 +363,7 @@ def build_dependency_graph(path, detect_system=False, verbose=False, threads=16)
         ]
     else:
         files = [abs_path]
-    graph = _build_dependency_graph(files, detect_system, verbose, threads)
+    graph = _build_dependency_graph(files, detect_system, verbose, threads, depth)
     if not os.path.isdir(abs_path):
         graph.graph.graph["entry_points"] = [abs_path]
     return graph
