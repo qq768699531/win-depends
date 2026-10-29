@@ -4,6 +4,11 @@ Notable changes to `win_depends` are documented here.
 
 ## Unreleased
 
+### Changed
+
+- Keep the README focused on installation, usage and basic parameters;
+  consolidate migration and report behavior notes in this changelog.
+
 ## 1.1.0
 
 ### Added
@@ -12,6 +17,8 @@ Notable changes to `win_depends` are documented here.
   limits using shortest paths from depth-zero input files.
 - Replace `--tree [LEVEL]` with `--print-tree`; depth limits now affect analysis
   and every output rather than only the printed tree.
+  Directory inputs treat every directly contained DLL/EXE as depth 0;
+  nodes at the depth limit are retained without further dependency expansion.
 
 - Export the complete analyzed dependency graph with `--out FILE` (short form
   `-o FILE`), inferring
@@ -58,6 +65,13 @@ Notable changes to `win_depends` are documented here.
 - Remove GitLab CI configuration and switch the Flake8 hook to its GitHub
   repository. GitHub Actions is the sole CI entry point.
 
+### Report behavior
+
+- DLL lookup checks the target directory, then `PATH`. `--detect-system`
+  includes system DLLs in the analyzed graph.
+- Orphan DLLs may still be loaded dynamically; the report is not a deletion list.
+- Missing and invalid dependency reports do not set a failing exit code.
+
 ## 1.0.3
 
 ### Changed
@@ -70,3 +84,5 @@ Notable changes to `win_depends` are documented here.
   the report.
 - Preserve the required status when a DLL is imported both normally and with
   delay loading.
+- Delay-loading warnings do not guarantee runtime availability; verify the
+  affected features when those DLLs are loaded.

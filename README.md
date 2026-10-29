@@ -47,22 +47,4 @@ Directory scans include only directly contained DLL/EXE files, not subdirectorie
 | `-v`, `--version` | Print the installed version. |
 | `-h`, `--help` | Show command help. |
 
-## Report notes
-
-- `--print-*` options display results already collected during analysis.
-  They replace the removed `--check-*` options.
-- DLL lookup uses the target directory, then `PATH`. Use `--detect-system` to
-  include system DLLs in the dependency graph.
-- Missing DLLs reachable only through delay-loaded imports are warnings.
-  A normal import of the same DLL makes it an error. Verify affected features
-  at runtime.
-- Orphan DLLs may still be loaded dynamically; the report is not a deletion list.
-- Reports do not set a failing exit code for missing or invalid dependencies.
-
-`--print-tree` replaces `--tree` and takes no argument. `--depth` limits analysis,
-not just display: depth 0 includes only input files, depth 1 adds their direct
-dependencies. Directory inputs treat every directly contained DLL/EXE as depth 0.
-Dependencies at the depth limit are retained but are not parsed for further
-dependencies. When multiple paths reach a dependency, the shortest path applies.
-
 [Changelog](CHANGELOG.md) · [Release guide](RELEASE.md) · [Roadmap](ROADMAP.md)
